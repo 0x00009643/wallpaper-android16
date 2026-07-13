@@ -339,8 +339,8 @@ function frame(timestampMs) {
     drawUniverse(ctx, universe, cameraZoom);
     ctx.restore();
 
-    // Update HUD every 100ms
-    if (timestampMs - lastHudUpdate > 100) {
+    // Update HUD every frame
+    if (timestampMs - lastHudUpdate > 16) {
         lastHudUpdate = timestampMs;
         updateHUD();
     }
