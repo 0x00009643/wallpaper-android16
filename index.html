@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Android 16 - Landroid</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #16161D; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #hud {
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-weight: 500; font-size: 12px; letter-spacing: 1px;
+        pointer-events: none; user-select: none;
+        padding: 6px;
+    }
+    #hud-top {
+        position: absolute; top: 6px; left: 6px;
+        color: #B7B7FF; white-space: pre; line-height: 14px;
+        font-size: 9px; line-height: 11px;
+    }
+    #hud-bottom {
+        position: absolute; bottom: 6px; left: 6px;
+        color: #B7B7FF; white-space: pre; line-height: 14px;
+    }
+    #hud-autopilot {
+        color: #4285F4; white-space: pre; line-height: 14px;
+        margin-bottom: 6px;
+    }
+    #hud-bottom-row {
+        display: flex; justify-content: space-between; align-items: flex-end;
+    }
+    .fade-in { opacity: 0; animation: flickerFadeIn 0.5s ease-in forwards; }
+    .fade-in-delay { opacity: 0; animation: flickerFadeIn 0.5s ease-in 1.5s forwards; }
+    @keyframes flickerFadeIn {
+        0% { opacity: 0; }
+        10% { opacity: 0.8; }
+        20% { opacity: 0.2; }
+        30% { opacity: 0.9; }
+        40% { opacity: 0.4; }
+        50% { opacity: 1; }
+        60% { opacity: 0.7; }
+        70% { opacity: 1; }
+        100% { opacity: 1; }
+    }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="hud">
+    <div id="hud-top" class="fade-in-delay"></div>
+    <div id="hud-bottom" class="fade-in">
+        <div id="hud-autopilot"></div>
+        <div id="hud-bottom-row">
+            <div id="hud-ship"></div>
+        </div>
+    </div>
+</div>
+
+<script src="js/colors.js"></script>
+<script src="js/math.js"></script>
+<script src="js/vec2.js"></script>
+<script src="js/physics.js"></script>
+<script src="js/namer.js"></script>
+<script src="js/universe.js"></script>
+<script src="js/autopilot.js"></script>
+<script src="js/renderer.js"></script>
+<script>
+'use strict';
+
+// --- Canvas Setup ---
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// --- HUD Elements ---
+var hudTop = document.getElementById('hud-top');
+var hudBottom = document.getElementById('hud-bottom');
+var hudAutopilot = document.getElementById('hud-autopilot');
+var hudShip = document.getElementById('hud-ship');
+
+// --- Wallpaper Engine Properties ---
+var userProperties = {
+    speed: 1.0,
+    bottomOffset: 6,
+    topOffset: 6
+};
+
+window.wallpaperPropertyListener = {
+    applyUserProperties: function(properties) {
+        if (properties.speed) {
+            userProperties.speed = properties.speed.value;
+            TIME_SCALE = userProperties.speed;
+        }
+        if (properties.bottomOffset) {
+            userProperties.bottomOffset = properties.bottomOffset.value;
+            hudBottom.style.bottom = userProperties.bottomOffset + 'px';
+        }
+        if (properties.topOffset) {
+            userProperties.topOffset = properties.topOffset.value;
+            hudTop.style.top = userProperties.topOffset + 'px';
+        }
+    }
+};
+
+// --- Daily Seed ---
+var today = new Date();
+var dailySeed = today.getFullYear() * 10000 + today.getMonth() * 100 + today.getDate();
+dailySeed = Math.abs(dailySeed);
+
+// --- Initialize Universe ---
+var namer = new Namer();
+var universe = new Universe(namer, dailySeed);
+universe.initRandom();
+
+// --- Set up autopilot ---
+var autopilot = new Autopilot(universe.ship, universe);
+universe.ship.autopilot = autopilot;
+universe.add(autopilot);
+autopilot.enabled = true;
+
+// --- Camera ---
+var DEFAULT_CAMERA_ZOOM = 1;
+var MIN_CAMERA_ZOOM = 250 / UNIVERSE_RANGE;
+var MAX_CAMERA_ZOOM = 5;
+var cameraZoom = DEFAULT_CAMERA_ZOOM;
+var DYNAMIC_ZOOM = true;
+
+// --- System Designation ---
+function getDessertCode() {
+    return 'BAK';
+}
+
+function getSystemDesignation() {
+    return getDessertCode() + '-' + (universe.randomSeed % 100000);
+}
+
+// --- HUD Update ---
+function capitalize(s) {
+    if (!s) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatMass(m) {
+    if (m >= 1000) return (m / 1000).toFixed(1) + 'e+3';
+    if (m >= 100) return m.toFixed(0);
+    if (m >= 10) return m.toFixed(1);
+    return m.toFixed(2);
+}
+
+function updateHUD() {
+    var ship = universe.ship;
+    var explored = universe.planets.filter(function(p) { return p.explored; });
+
+    // Top: Star catalog
+    var catalogLines = [
+        '  STAR: ' + universe.star.name + ' (' + getSystemDesignation() + ')',
+        ' CLASS: ' + universe.star.cls,
+        'RADIUS: ' + Math.floor(universe.star.radius),
+        '  MASS: ' + formatMass(universe.star.mass),
+        'BODIES: ' + explored.length + ' / ' + universe.planets.length,
+        ''
+    ];
+
+    for (var i = 0; i < explored.length; i++) {
+        var p = explored[i];
+        catalogLines.push(
+            '  BODY: ' + p.name,
+            '  TYPE: ' + capitalize(p.description),
+            '  ATMO: ' + capitalize(p.atmosphere),
+            ' FAUNA: ' + capitalize(p.fauna),
+            ' FLORA: ' + capitalize(p.flora),
+            ''
+        );
+    }
+    hudTop.textContent = catalogLines.join('\n');
+
+    // Bottom: Autopilot status
+    hudAutopilot.textContent = autopilot.getTelemetry();
+
+    // Bottom: Ship telemetry
+    var closest = universe.closestPlanet();
+    var distToClosest = Math.floor(closest.pos.distance(ship.pos) - closest.radius);
+    var shipLines = [];
+
+    if (ship.landing) {
+        shipLines.push(
+            'LND: ' + ship.landing.planet.name.toUpperCase(),
+            'JOB: ' + ship.landing.text.toUpperCase()
+        );
+    } else if (distToClosest < 10000) {
+        shipLines.push('ALT: ' + distToClosest);
+    }
+
+    shipLines.push(
+        'THR: ' + Math.floor(ship.thrust.mag() * 100) + '%',
+        'POS: <' + (ship.pos.x >= 0 ? '+' : '') + ship.pos.x.toFixed(0) + ',' +
+                   (ship.pos.y >= 0 ? '+' : '') + ship.pos.y.toFixed(0) + '>',
+        'VEL: ' + ship.velocity.mag().toFixed(0)
+    );
+
+    hudShip.textContent = shipLines.join('\n');
+}
+
+// --- Grid Drawing ---
+function drawGrid(visibleSpaceRect, zoom) {
+    var gridStep = 1000;
+    var dp32 = 32 * (window.devicePixelRatio || 1);
+    while (gridStep * zoom < dp32) gridStep *= 10;
+
+    ctx.save();
+    ctx.strokeStyle = Colors.Eigengrau2;
+
+    var x = Math.floor(visibleSpaceRect.left / gridStep) * gridStep;
+    while (x < visibleSpaceRect.right) {
+        ctx.lineWidth = (x % (gridStep * 10) === 0) ? 3 / zoom : 1.5 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(x, visibleSpaceRect.top);
+        ctx.lineTo(x, visibleSpaceRect.bottom);
+        ctx.stroke();
+        x += gridStep;
+    }
+
+    var y = Math.floor(visibleSpaceRect.top / gridStep) * gridStep;
+    while (y < visibleSpaceRect.bottom) {
+        ctx.lineWidth = (y % (gridStep * 10) === 0) ? 3 / zoom : 1.5 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(visibleSpaceRect.left, y);
+        ctx.lineTo(visibleSpaceRect.right, y);
+        ctx.stroke();
+        y += gridStep;
+    }
+
+    ctx.restore();
+}
+
+// --- Main Loop ---
+var lastHudUpdate = 0;
+
+function frame(timestampMs) {
+    requestAnimationFrame(frame);
+
+    universe.step(timestampMs);
+    if (universe.dt === 0) return;
+
+    // Camera: follow ship with dynamic zoom
+    var closest = universe.closestPlanet();
+    var distToNearestSurf = Math.max(0, universe.ship.pos.distance(closest.pos) - closest.radius * 1.2);
+
+    if (DYNAMIC_ZOOM) {
+        var targetZoom = clamp(500 / distToNearestSurf, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
+        cameraZoom = expSmooth(cameraZoom, targetZoom, universe.dt, 1.5);
+    } else {
+        cameraZoom = expSmooth(cameraZoom, DEFAULT_CAMERA_ZOOM, universe.dt, 1.5);
+    }
+
+    var cameraOffset = universe.follow ? universe.follow.pos.neg() : Vec2.Zero;
+
+    // Visible space
+    var cw = canvas.width;
+    var ch = canvas.height;
+    var visibleW = cw / cameraZoom;
+    var visibleH = ch / cameraZoom;
+    var centerX = -cameraOffset.x;
+    var centerY = -cameraOffset.y;
+
+    var visibleSpaceRect = {
+        left: centerX - visibleW * 0.5,
+        top: centerY - visibleH * 0.5,
+        right: centerX + visibleW * 0.5,
+        bottom: centerY + visibleH * 0.5,
+        width: visibleW,
+        height: visibleH
+    };
+
+    // Clear
+    ctx.fillStyle = Colors.Eigengrau;
+    ctx.fillRect(0, 0, cw, ch);
+
+    // Apply camera transform
+    ctx.save();
+    ctx.scale(cameraZoom, cameraZoom);
+    ctx.translate(
+        -visibleSpaceRect.left - visibleW * 0.5 + cw * 0.5 / cameraZoom,
+        -visibleSpaceRect.top - visibleH * 0.5 + ch * 0.5 / cameraZoom
+    );
+
+    // Draw grid (in world coordinates, inside camera transform)
+    drawGrid(visibleSpaceRect, cameraZoom);
+
+    drawUniverse(ctx, universe, cameraZoom);
+    ctx.restore();
+
+    // Update HUD every 100ms
+    if (timestampMs - lastHudUpdate > 100) {
+        lastHudUpdate = timestampMs;
+        updateHUD();
+    }
+}
+
+// Start
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
