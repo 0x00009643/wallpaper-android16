@@ -101,6 +101,7 @@ function Simulator(randomSeed) {
     this._wallClockMs = 0;
     this.now = 0;
     this.dt = 0;
+    this.randomSeed = randomSeed;
     this.rng = createRng(randomSeed);
     this.entities = [];
     this.constraints = [];
