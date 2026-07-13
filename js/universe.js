@@ -281,7 +281,7 @@ Universe.prototype.closestPlanet = function() {
 Universe.prototype.updateAll = function(dt, entities) {
     this.ship.transit = false;
 
-    if (!this.ship.landing) {
+    if (!this.ship.landing && this.ship.autopilot && this.ship.autopilot.enabled) {
         var allBodies = this.planets.concat([this.star]);
         for (var i = 0; i < allBodies.length; i++) {
             var planet = allBodies[i];

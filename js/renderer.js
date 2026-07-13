@@ -137,7 +137,7 @@ function drawUniverse(ctx, universe, zoom) {
         }
     }
 
-    if (universe.ship.autopilot) {
+    if (universe.ship.autopilot && universe.ship.autopilot.enabled) {
         drawAutopilot(ctx, universe.ship.autopilot, zoom);
     }
     drawSpacecraft(ctx, universe.ship, zoom);

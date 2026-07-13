@@ -114,7 +114,7 @@ universe.initRandom();
 var autopilot = new Autopilot(universe.ship, universe);
 universe.ship.autopilot = autopilot;
 universe.add(autopilot);
-autopilot.enabled = true;
+setTimeout(function() { autopilot.enabled = true; }, 4000);
 
 // --- Camera ---
 var DEFAULT_CAMERA_ZOOM = 1;
@@ -176,7 +176,9 @@ function flickerFadeIn(element, duration, onComplete) {
         var elapsed = timestamp - startTime;
         var fraction = Math.min(elapsed / duration, 1);
         var progress = bezierEase(fraction);
-        element.style.opacity = Math.random() < progress ? '1' : '0';
+        var maxChance = 0.85;
+        var chance = progress * maxChance;
+        element.style.opacity = Math.random() < chance ? '1' : '0';
         if (fraction < 1) {
             requestAnimationFrame(tick);
         } else {
@@ -293,7 +295,7 @@ function frame(timestampMs) {
     var closest = universe.closestPlanet();
     var distToNearestSurf = Math.max(0, universe.ship.pos.distance(closest.pos) - closest.radius * 1.2);
 
-    if (DYNAMIC_ZOOM) {
+    if (DYNAMIC_ZOOM && autopilot.enabled) {
         var targetZoom = clamp(500 / distToNearestSurf, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
         cameraZoom = expSmooth(cameraZoom, targetZoom, universe.dt, 1.5);
     } else {
