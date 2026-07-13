@@ -144,6 +144,7 @@ function drawUniverse(ctx, universe, zoom) {
 }
 
 function drawContainer(ctx, container, zoom) {
+    if (container.radius > 100000 / zoom) return;
     ctx.save();
     ctx.strokeStyle = '#800000';
     ctx.lineWidth = 1 / zoom;
@@ -157,10 +158,12 @@ function drawContainer(ctx, container, zoom) {
 
 function drawGravitationalField(ctx, planet, zoom) {
     var rings = 8;
+    var maxR = 100000 / zoom;
     for (var i = 0; i < rings; i++) {
         var t = i / rings;
         var force = 200 + (0.01 - 200) * t;
         var r = Math.sqrt(GRAVITATION * planet.mass * SPACECRAFT_MASS / Math.abs(force));
+        if (r > maxR) continue;
         var alpha = 0.5 + (0.1 - 0.5) * t;
         ctx.save();
         ctx.strokeStyle = 'rgba(255,0,0,' + alpha + ')';
@@ -174,14 +177,17 @@ function drawGravitationalField(ctx, planet, zoom) {
 
 function drawPlanet(ctx, planet, zoom) {
     if (DRAW_ORBITS) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(0,255,255,0.5)';
-        ctx.lineWidth = 1 / zoom;
-        ctx.beginPath();
-        ctx.arc(planet.orbitCenter.x, planet.orbitCenter.y,
-            planet.pos.distance(planet.orbitCenter), 0, PI2f);
-        ctx.stroke();
-        ctx.restore();
+        var orbitR = planet.pos.distance(planet.orbitCenter);
+        if (orbitR < 100000 / zoom) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(0,255,255,0.5)';
+            ctx.lineWidth = 1 / zoom;
+            ctx.beginPath();
+            ctx.arc(planet.orbitCenter.x, planet.orbitCenter.y,
+                orbitR, 0, PI2f);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 
     if (DRAW_GRAVITATIONAL_FIELDS) {
@@ -216,25 +222,44 @@ function drawStar(ctx, star, zoom) {
         drawGravitationalField(ctx, star, zoom);
     }
 
-    // star burst 1
+    // star burst 1 (cached)
     ctx.save();
     ctx.rotate(star.anim / 23 * PI2f);
     ctx.strokeStyle = star.color;
     ctx.lineWidth = 3 / zoom;
-    var path1 = createStarPath(star.radius + 80, star.radius + 250, STAR_POINTS);
-    ctx.stroke(path1);
+    ctx.stroke(getStarPath1(star));
     ctx.restore();
 
-    // star burst 2
+    // star burst 2 (cached)
     ctx.save();
     ctx.rotate(star.anim / -19 * PI2f);
     ctx.strokeStyle = star.color;
     ctx.lineWidth = 3 / zoom;
-    var path2 = createStarPath(star.radius + 20, star.radius + 200, STAR_POINTS + 1);
-    ctx.stroke(path2);
+    ctx.stroke(getStarPath2(star));
     ctx.restore();
 
     ctx.restore();
+}
+
+var _starPath1 = null;
+var _starPath2 = null;
+var _starPathRadius1 = 0;
+var _starPathRadius2 = 0;
+
+function getStarPath1(star) {
+    if (!_starPath1 || _starPathRadius1 !== star.radius) {
+        _starPathRadius1 = star.radius;
+        _starPath1 = createStarPath(star.radius + 80, star.radius + 250, STAR_POINTS);
+    }
+    return _starPath1;
+}
+
+function getStarPath2(star) {
+    if (!_starPath2 || _starPathRadius2 !== star.radius) {
+        _starPathRadius2 = star.radius;
+        _starPath2 = createStarPath(star.radius + 20, star.radius + 200, STAR_POINTS + 1);
+    }
+    return _starPath2;
 }
 
 function drawSpacecraft(ctx, ship, zoom) {
