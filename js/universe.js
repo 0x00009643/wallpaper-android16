@@ -133,8 +133,7 @@ Landing.prototype.canBeRemoved = function() {
 Landing.prototype.solve = function(sim, dt) {
     if (this.ship) {
         var landingVector = Vec2.fromAngleMag(this.angle, this.ship.radius + this.planet.radius);
-        var desiredPos = this.planet.pos.plus(landingVector);
-        this.ship.pos = this.ship.pos.times(0.5).plus(desiredPos.times(0.5));
+        this.ship.pos = this.planet.pos.plus(landingVector);
         this.ship.angle = this.angle;
     }
     this.fuse.update(dt);
@@ -282,19 +281,21 @@ Universe.prototype.closestPlanet = function() {
 Universe.prototype.updateAll = function(dt, entities) {
     this.ship.transit = false;
 
-    var allBodies = this.planets.concat([this.star]);
-    for (var i = 0; i < allBodies.length; i++) {
-        var planet = allBodies[i];
-        var vector = planet.pos.minus(this.ship.pos);
-        var d = vector.mag();
-        if (d < planet.radius) {
-            if (planet instanceof Star) this.ship.transit = true;
-        } else if (this.now > this.ship.launchClock + LAUNCH_MECO) {
-            this.ship.velocity = this.ship.velocity.plus(
-                Vec2.fromAngleMag(vector.angle(),
-                    GRAVITATION * (this.ship.mass * planet.mass) / Math.pow(d, 2)
-                ).times(dt)
-            );
+    if (!this.ship.landing) {
+        var allBodies = this.planets.concat([this.star]);
+        for (var i = 0; i < allBodies.length; i++) {
+            var planet = allBodies[i];
+            var vector = planet.pos.minus(this.ship.pos);
+            var d = vector.mag();
+            if (d < planet.radius) {
+                if (planet instanceof Star) this.ship.transit = true;
+            } else if (this.now > this.ship.launchClock + LAUNCH_MECO) {
+                this.ship.velocity = this.ship.velocity.plus(
+                    Vec2.fromAngleMag(vector.angle(),
+                        GRAVITATION * (this.ship.mass * planet.mass) / Math.pow(d, 2)
+                    ).times(dt)
+                );
+            }
         }
     }
 
