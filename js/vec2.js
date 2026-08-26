@@ -11,11 +11,14 @@ function Vec2(x, y) {
 Vec2.Zero = new Vec2(0, 0);
 
 Vec2.fromAngleMag = function(a, m) {
-    return new Vec2(m * Math.cos(a), m * Math.sin(a));
+    return new Vec2(
+        Math.fround(m * Math.fround(Math.cos(a))),
+        Math.fround(m * Math.fround(Math.sin(a)))
+    );
 };
 
 Vec2.prototype.mag = function() {
-    return Math.sqrt(this.x * this.x + this.y * this.y);
+    return Math.fround(Math.sqrt(this.x * this.x + this.y * this.y));
 };
 
 Vec2.prototype.distance = function(other) {

@@ -33,7 +33,8 @@ function Planet(orbitCenter, radius, pos, speed, color) {
     this.speed = speed;
     this.color = color || '#FFFFFF';
     this.orbitRadius = pos.distance(orbitCenter);
-    this.mass = (4 / 3) * PIf * Math.pow(radius, 3) * PLANETARY_DENSITY;
+    var r3 = Math.fround(Math.fround(radius * radius) * radius);
+    this.mass = Math.fround(Math.fround(Math.fround(PIf * r3) * PLANETARY_DENSITY));
     this.atmosphere = '';
     this.description = '';
     this.flora = '';
@@ -60,7 +61,8 @@ function Star(cls, radius) {
     Planet.call(this, Vec2.Zero, radius, Vec2.Zero, 0, StarClassColors[cls]);
     this.name = '';
     this.cls = cls;
-    this.mass = (4 / 3) * PIf * Math.pow(radius, 3) * STELLAR_DENSITY;
+    var r3 = Math.fround(Math.fround(radius * radius) * radius);
+    this.mass = Math.fround(Math.fround(Math.fround(PIf * r3) * STELLAR_DENSITY));
     this.collides = false;
     this.anim = 0;
 }
@@ -232,9 +234,10 @@ Universe.prototype.initRandom = function() {
     for (var i = 0; i < numPlanets; i++) {
         var pr = this.rng.nextFloatInRange(PLANET_RADIUS_MIN, PLANET_RADIUS_MAX);
         var orbitRadius = this.rng.nextFloatInRange(PLANET_ORBIT_MIN, PLANET_ORBIT_MAX);
-        var period = Math.sqrt(Math.pow(orbitRadius, 3) / this.star.mass) * KEPLER_CONSTANT;
-        var speed = 2 * PIf * orbitRadius / period;
-        var angle = this.rng.nextFloat() * PI2f;
+        var orbitR3 = Math.fround(Math.fround(orbitRadius * orbitRadius) * orbitRadius);
+        var period = Math.fround(Math.sqrt(Math.fround(orbitR3 / this.star.mass)) * KEPLER_CONSTANT);
+        var speed = Math.fround(Math.fround(Math.fround(2 * PIf) * orbitRadius) / period);
+        var angle = Math.fround(this.rng.nextFloat() * PI2f);
         var pos = this.star.pos.plus(Vec2.fromAngleMag(angle, orbitRadius));
 
         var p = new Planet(this.star.pos, pr, pos, speed, Colors.Eigengrau4);
@@ -256,10 +259,10 @@ Universe.prototype.initRandom = function() {
     this.add(this.star);
 
     this.ship = new Spacecraft();
-    var shipAngle = this.rng.nextFloat() * PI2f;
+    var shipAngle = Math.fround(this.rng.nextFloat() * PI2f);
     var shipOrbit = this.rng.nextFloatInRange(PLANET_ORBIT_MIN, PLANET_ORBIT_MAX);
     this.ship.pos = this.star.pos.plus(Vec2.fromAngleMag(shipAngle, shipOrbit));
-    this.ship.angle = this.rng.nextFloat() * PI2f;
+    this.ship.angle = Math.fround(this.rng.nextFloat() * PI2f);
     this.add(this.ship);
 
     this.ringfence = new Container(UNIVERSE_RANGE);

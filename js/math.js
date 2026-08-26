@@ -1,7 +1,7 @@
 'use strict';
 
-const PIf = Math.PI;
-const PI2f = Math.PI * 2;
+const PIf = Math.fround(Math.PI);
+const PI2f = Math.fround(2 * Math.PI);
 
 function smooth(x) {
     return x * x * x * (x * (x * 6 - 15) + 10);

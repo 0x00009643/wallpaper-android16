@@ -21,14 +21,14 @@ function RandomTable() {
     this.total = 0;
     for (var i = 0; i < arguments.length; i++) {
         this.pairs.push(arguments[i]);
-        this.total += arguments[i][0];
+        this.total = Math.fround(this.total + arguments[i][0]);
     }
 }
 
 RandomTable.prototype.roll = function(rng) {
     var x = rng.nextFloatInRange(0, this.total);
     for (var i = 0; i < this.pairs.length; i++) {
-        x -= this.pairs[i][0];
+        x = Math.fround(x - this.pairs[i][0]);
         if (x < 0) return this.pairs[i][1];
     }
     return this.pairs[this.pairs.length - 1][1];
@@ -99,7 +99,7 @@ var STAR_SUFFIXES = [
 ];
 
 var STAR_SUFFIXES_RARE = [
-    'Serif','Sans','Oblique','Grotesque','Handtooled','III "Trey"','Alfredo',
+    'Serif','Sans','Oblique','Grotesque','Handtooled','III \u201CTrey\u201D','Alfredo',
     '2.0','(Final)','(Final (Final))','(Draft)','Con Carne'
 ];
 
@@ -125,9 +125,9 @@ var ACTIVITIES = [
 ];
 
 var SUFFIX_PROB = 0.75;
-var LETTER_PROB = 0.3;
-var NUMBER_PROB = 0.3;
-var RARE_PROB = 0.05;
+var LETTER_PROB = Math.fround(0.3);
+var NUMBER_PROB = Math.fround(0.3);
+var RARE_PROB = Math.fround(0.05);
 
 // --- Namer ---
 function Namer() {
@@ -152,7 +152,7 @@ function Namer() {
     this._atmoTable = new RandomTable([0.75, this._atmoDescriptors], [0.25, this._anyDescriptors]);
     this._delimiterTable = new RandomTable(
         [15, ' '], [3, '-'], [1, '_'], [1, '/'], [1, '.'],
-        [1, '*'], [1, '^'], [1, '#'], [0.1, '(^*!%@##!!']
+        [1, '*'], [1, '^'], [1, '#'], [Math.fround(0.1), '(^*!%@##!!']
     );
 }
 

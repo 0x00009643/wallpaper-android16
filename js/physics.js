@@ -4,18 +4,62 @@ var TIME_SCALE = 1;
 var MAX_VALID_DT = 1;
 
 // --- Random ---
+// Exact replica of kotlin.random.XorWowRandom, which is what the original
+// Kotlin code uses via Random(seed) on the JVM/Android.
 function createRng(seed) {
-    var s = seed;
+    var a = seed | 0;
+    var b = Math.floor(seed / 4294967296) | 0;
+    var x = a | 0;
+    var y = b | 0;
+    var z = 0;
+    var w = 0;
+    var v = (a ^ -1) | 0;
+    var addend = ((a << 10) ^ (b >>> 4)) | 0;
+
+    function nextInt32() {
+        var t = x | 0;
+        t = (t ^ (t >>> 2)) | 0;
+        x = y | 0;
+        y = z | 0;
+        z = w | 0;
+        var vv = v | 0;
+        w = vv;
+        t = (t ^ (t << 1) ^ vv ^ (vv << 4)) | 0;
+        v = t;
+        addend = (addend + 362437) | 0;
+        return (t + addend) | 0;
+    }
+
+    for (var i = 0; i < 64; i++) nextInt32();
+
+    function nextBits(bitCount) {
+        return nextInt32() >>> (32 - bitCount);
+    }
+
+    function nextInt(from, until) {
+        var n = until - from;
+        if (n > 0) {
+            if ((n & -n) === n) {
+                return nextBits(31 - Math.clz32(n)) + from;
+            }
+            var result, bits;
+            for (;;) {
+                bits = nextInt32() >>> 1;
+                result = bits % n;
+                if (bits - result + (n - 1) >= 0) break;
+            }
+            return result + from;
+        }
+        return from;
+    }
+
     return {
         nextFloat: function() {
-            s = (s * 16807 + 0) % 2147483647;
-            return (s - 1) / 2147483646;
+            return nextBits(24) / 16777216;
         },
-        nextInt: function(from, until) {
-            return Math.floor(this.nextFloat() * (until - from)) + from;
-        },
+        nextInt: nextInt,
         nextFloatInRange: function(from, until) {
-            return from + (until - from) * this.nextFloat();
+            return Math.fround(from + Math.fround(Math.fround(until - from) * this.nextFloat()));
         },
         choose: function(arr) {
             return arr[this.nextInt(0, arr.length)];
